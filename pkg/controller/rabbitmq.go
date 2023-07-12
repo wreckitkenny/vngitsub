@@ -19,7 +19,6 @@ func ReceiveMsg() {
 	port := os.Getenv("PORTRB")
 	queue := os.Getenv("QUEUE")
 
-	logger.Info("Connecting to RabbitMQ [%s:%s]", address, port)
 	var _amqp string = fmt.Sprintf("amqp://%s:%s@%s:%s/", username, password, address, port)
 
 	//Connect RabbitMQ Instance
