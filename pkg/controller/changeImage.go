@@ -39,9 +39,9 @@ func ChangeImage(msg []byte) {
 		for blob := 0; blob < len(blobList); blob++ {
 			if changeTagImage(projectID, transID, environment, imageName, oldTag, newTag, blobList[blob], botName, rootPath) {
 				logger.Infof("[%s][%d] Changing old tag [%s] to new tag [%s] successfully", transID, blob, oldTag, newTag)
-				notifyTelegram(cluster, environment, imageName, oldTag, newTag)
 			}
 		}
+		notifyTelegram(cluster, environment, imageName, oldTag, newTag)
 	} else {
 		logger.Warnf("[%s] Old tag is not found OR nothing to change", newTag)
 	}
