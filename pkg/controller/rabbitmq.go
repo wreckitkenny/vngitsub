@@ -19,23 +19,24 @@ func ReceiveMsg() {
 	port := os.Getenv("PORTRB")
 	queue := os.Getenv("QUEUE")
 
+	logger.Info("Connecting to RabbitMQ [%s:%s]", address, port)
 	var _amqp string = fmt.Sprintf("amqp://%s:%s@%s:%s/", username, password, address, port)
 
 	//Connect RabbitMQ Instance
 	conn, err := amqp.Dial(_amqp)
 	if err != nil {
-		logger.Errorf("Connecting to RabbitMQ...failed: %s", err)
+		logger.Errorf("Connecting to RabbitMQ [%s:%s]...FAILED: %s", address, port, err)
 	} else {
-		logger.Debug("Connecting to RabbitMQ...ok")
+		logger.Debug("Connecting to RabbitMQ [%s:%s]...OK", address, port)
 	}
 	defer conn.Close()
 
 	//Get RabbitMQ Channel
 	ch, err := conn.Channel()
 	if err != nil {
-		logger.Errorf("Openning a channel...failed: %s", err)
+		logger.Errorf("Openning a channel...FAILED: %s", err)
 	} else {
-		logger.Debug("Openning a channel...ok")
+		logger.Debug("Openning a channel...OK")
 	}
 	defer ch.Close()
 
@@ -52,7 +53,7 @@ func ReceiveMsg() {
 	if err != nil {
 		logger.Errorf("Registering a consumer...FAILED: %s", err)
 	} else {
-		logger.Debug("Registering a consumer...ok")
+		logger.Debug("Registering a consumer...OK")
 	}
 
 	var forever chan struct{}
