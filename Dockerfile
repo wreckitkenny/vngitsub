@@ -7,8 +7,8 @@ RUN go mod download
 
 COPY *.go ./
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /vngitSub
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/vngitSub
 
 EXPOSE 8000
 
-CMD ["/vngitSub"]
+CMD ["/app/vngitSub"]
