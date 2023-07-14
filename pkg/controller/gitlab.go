@@ -202,7 +202,7 @@ func getBlobContent(projectID interface{}, blobName string, transID string) stri
 	return blob.Content
 }
 
-func getOldTag(projectID interface{}, transID string, blobList []string, imageName string) string {
+func getOldTag(projectID interface{}, transID string, blobList []string, imageName string) (string, string) {
 	var oldTagList []string
 	logger := utils.ConfigZap()
 	re := regexp.MustCompile(`((t|d)-[a-z0-9]{8})|(m-(\d+\.)+\d+-[a-z0-9]{8})`)
@@ -226,11 +226,14 @@ func getOldTag(projectID interface{}, transID string, blobList []string, imageNa
 	}
 
 	if len(oldTagList) > 1 {
-		logger.Warnf("[%s] More than one old tag found.", transID)
-		return ""
+		return "", "More than one old tag found"
 	}
 
-	return oldTagList[0]
+	if len(oldTagList) == 0 {
+		return "", "Old tag not found"
+	}
+
+	return oldTagList[0], ""
 }
 
 func getUserID(projectID interface{}, transID string) int {
