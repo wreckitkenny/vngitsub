@@ -26,13 +26,18 @@ func ChangeImage(msg []byte) {
 	botName := os.Getenv("BOTNAME")
 	rootPath := os.Getenv("ROOTPATH")
 	cluster := msgStruct.Cluster
-	environment := msgStruct.Environment
-	projectID := env[cluster + "-" + environment]
+	environment := strings.Split(cluster, "-")[len(strings.Split(cluster, "-"))-1]
+	projectID := env[cluster]
 	imageName := strings.Split(msgStruct.Image, ":")[0]
 	newTag := strings.Split(msgStruct.Image, ":")[1]
 	transID := newTag
 	blobList := locateBlob(projectID, newTag, imageName)
-	oldTag := getOldTag(projectID, newTag, blobList, imageName)
+	oldTag, err := getOldTag(projectID, newTag, blobList, imageName)
+	if err != "" {
+		logger.Warnf("[%s] %s", transID, err)
+	} else {
+		logger.Infof("[%s] Getting old tag [%s]...OK", transID, oldTag)
+	}
 
 	if oldTag != "" && oldTag != newTag {
 		logger.Infof("[%s] Comparing old tag [%s] and new tag [%s]...", newTag, oldTag, newTag)

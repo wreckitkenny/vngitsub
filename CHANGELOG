@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.3] | 2023-07-14
+### Added/Removed
+- Added log info for old tag getting process
+### Changed
+- Changed Dockerfile building in multi-stages
+### Fixed
+
 ## [1.0.2] | 2023-07-12
 ### Added/Removed
 ### Changed
