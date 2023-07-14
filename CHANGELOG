@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Added log info for old tag getting process
 ### Changed
 - Changed Dockerfile building in multi-stages
+- Changed Telegram format
 ### Fixed
 
 ## [1.0.2] | 2023-07-12
