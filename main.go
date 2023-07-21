@@ -22,5 +22,6 @@ func main(){
 	} else {
 		logger.Infof("Loading version...%s", version)
 	}
+	controller.ValidateMongoConnection()
 	controller.MsgHandler()
 }
