@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Added saving message state to MongoDB
 ### Changed
 ### Fixed
+- Fixed getting wrong old tag
 
 ## [1.0.3] | 2023-07-14
 ### Added/Removed

@@ -205,7 +205,7 @@ func getBlobContent(projectID interface{}, blobName string, transID string) stri
 func getOldTag(projectID interface{}, transID string, blobList []string, imageName string) (string, string) {
 	var oldTagList []string
 	logger := utils.ConfigZap()
-	re := regexp.MustCompile(`((t|d)-[a-z0-9]{8})|(m-(\d+\.)+\d+-[a-z0-9]{8})`)
+	re := regexp.MustCompile(`(?:tag?:)\s+((t|d)-[a-z0-9]{8})|(m-(\d+\.)+\d+-[a-z0-9]{8})`)
 	for blob := 0; blob < len(blobList); blob++ {
 		blobName := blobList[blob]
 		blobContent := getBlobContent(projectID, blobName, transID)
@@ -217,11 +217,12 @@ func getOldTag(projectID interface{}, transID string, blobList []string, imageNa
 			logger.Debugf("[%s] Base64 decoding file [%s]...OK", transID, blobName)
 		}
 
-		trimedBlobContent := strings.Trim(string(byteBlobContent), "\t\n\v\f\r")
-		regexTag := re.FindString(trimedBlobContent)
+		// trimedBlobContent := strings.TrimSpace(string(byteBlobContent))
+		regexTag := strings.ReplaceAll(re.FindString(string(byteBlobContent)), "tag:", "")
+		trimedRegexTag := strings.TrimSpace(regexTag)
 
-		if !utils.Contains(oldTagList, regexTag) {
-			oldTagList = append(oldTagList, regexTag)
+		if !utils.Contains(oldTagList, trimedRegexTag) {
+			oldTagList = append(oldTagList, trimedRegexTag)
 		}
 	}
 
