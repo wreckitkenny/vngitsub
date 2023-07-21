@@ -11,7 +11,7 @@ import (
 	"github.com/xanzy/go-gitlab"
 )
 
-func changeTagImage(projectID interface{}, transID string, environment string, imageName string, oldTag string, newTag string, blob string, botName string, rootPath string) bool {
+func changeTagImage(projectID interface{}, transID string, environment string, imageName string, oldTag string, newTag string, blob string, botName string, rootPath string) string {
 	logger := utils.ConfigZap()
 	client := createNewGitlabClient()
 	// Check directory existing
@@ -20,7 +20,7 @@ func changeTagImage(projectID interface{}, transID string, environment string, i
 		err := os.MkdirAll(parentPath, os.ModePerm)
 		if err != nil {
 			logger.Errorf("[%s] Creating a new parent path [%s]...FAILED: %v", transID, parentPath, err)
-			return false
+			return "error"
 		}
 
 		logger.Debugf("[%s] Creating a new parent path [%s]...OK", transID, parentPath)
@@ -31,14 +31,14 @@ func changeTagImage(projectID interface{}, transID string, environment string, i
 	blobRawContent, res, err := client.RepositoryFiles.GetRawFile(projectID, blob, &gitlab.GetRawFileOptions{Ref: gitlab.String("master")})
 	if err != nil {
 		logger.Errorf("[%s] Downloading raw blob content to local...FAILED: %v", transID, res.Status, err)
-		return false
+		return "error"
 	}
 	logger.Debugf("[%s] Downloading raw blob content to local...OK", transID, parentPath)
 
 	writErr := os.WriteFile(rootPath + "/" + blob + ".tmp", blobRawContent, 0644)
 	if writErr != nil {
 		logger.Errorf("[%s] Writing raw blob content to temporary file...%s: %v", transID, res.Status, writErr)
-		return false
+		return "error"
 	}
 	logger.Debugf("[%s] Writing raw blob content to temporary file...%s", transID, parentPath)
 
@@ -59,15 +59,15 @@ func changeTagImage(projectID interface{}, transID string, environment string, i
 		}
 
 		if createNewBranch(projectID, transID, branchName) && commitChange(projectID, transID, imageName, branchName, oldTag, newTag, blob, rootPath + "/" + blob) {
-			return true
+			return "success"
 		}
 	} else {
 		if commitChange(projectID, transID, imageName, "master", oldTag, newTag, blob, rootPath + "/" + blob) {
-			return true
+			return "success"
 		}
 	}
 
-	return false
+	return "error"
 }
 
 func commitChange(projectID interface{}, transID string, imageName string, branchName string, oldTag string, newTag string, blob string, filePath string) bool {
@@ -205,7 +205,7 @@ func getBlobContent(projectID interface{}, blobName string, transID string) stri
 func getOldTag(projectID interface{}, transID string, blobList []string, imageName string) (string, string) {
 	var oldTagList []string
 	logger := utils.ConfigZap()
-	re := regexp.MustCompile(`((t|d)-[a-z0-9]{8})|(m-(\d+\.)+\d+-[a-z0-9]{8})`)
+	re := regexp.MustCompile(`(?:tag?:)\s+((t|d)-[a-z0-9]{8})|(m-(\d+\.)+\d+-[a-z0-9]{8})`)
 	for blob := 0; blob < len(blobList); blob++ {
 		blobName := blobList[blob]
 		blobContent := getBlobContent(projectID, blobName, transID)
@@ -217,11 +217,12 @@ func getOldTag(projectID interface{}, transID string, blobList []string, imageNa
 			logger.Debugf("[%s] Base64 decoding file [%s]...OK", transID, blobName)
 		}
 
-		trimedBlobContent := strings.Trim(string(byteBlobContent), "\t\n\v\f\r")
-		regexTag := re.FindString(trimedBlobContent)
+		// trimedBlobContent := strings.TrimSpace(string(byteBlobContent))
+		regexTag := strings.ReplaceAll(re.FindString(string(byteBlobContent)), "tag:", "")
+		trimedRegexTag := strings.TrimSpace(regexTag)
 
-		if !utils.Contains(oldTagList, regexTag) {
-			oldTagList = append(oldTagList, regexTag)
+		if !utils.Contains(oldTagList, trimedRegexTag) {
+			oldTagList = append(oldTagList, trimedRegexTag)
 		}
 	}
 

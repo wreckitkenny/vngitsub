@@ -42,9 +42,11 @@ func ChangeImage(msg []byte) {
 	if oldTag != "" && oldTag != newTag {
 		logger.Infof("[%s] Comparing old tag [%s] and new tag [%s]...", newTag, oldTag, newTag)
 		for blob := 0; blob < len(blobList); blob++ {
-			if changeTagImage(projectID, transID, environment, imageName, oldTag, newTag, blobList[blob], botName, rootPath) {
+			changeState := changeTagImage(projectID, transID, environment, imageName, oldTag, newTag, blobList[blob], botName, rootPath)
+			if changeState == "success" {
 				logger.Infof("[%s][%d] Changing old tag [%s] to new tag [%s] successfully", transID, blob, oldTag, newTag)
 			}
+			saveState(transID, msgStruct.Image, msgStruct.Cluster, blobList[blob], changeState)
 		}
 		notifyTelegram(cluster, environment, imageName, oldTag, newTag)
 	} else {

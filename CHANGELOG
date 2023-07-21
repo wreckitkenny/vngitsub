@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.4] | 2023-07-21
+### Added/Removed
+- Added saving message state to MongoDB
+### Changed
+### Fixed
+- Fixed getting wrong old tag
+
 ## [1.0.3] | 2023-07-14
 ### Added/Removed
 - Added log info for old tag getting process
