@@ -11,72 +11,81 @@ import (
 	"github.com/xanzy/go-gitlab"
 )
 
-func changeTagImage(projectID interface{}, transID string, environment string, imageName string, oldTag string, newTag string, blob string, botName string, rootPath string) string {
+func changeTagImage(projectID interface{}, transID string, environment string, imageName string, oldTag string, newTag string, blobList []string, botName string, rootPath string, fullImage string, cluster string) string {
 	logger := utils.ConfigZap()
 	client := createNewGitlabClient()
-	// Check directory existing
-	parentPath := strings.Join(strings.Split(blob, "/")[0:len(strings.Split(blob,"/"))-1], "/")
-	if _, err := os.Stat(parentPath); os.IsNotExist(err) {
-		err := os.MkdirAll(parentPath, os.ModePerm)
+
+	branchName := strings.Split(imageName, "/")[len(strings.Split(imageName, "/"))-1] + "-" + newTag
+	oldBranchName := strings.Split(imageName, "/")[len(strings.Split(imageName, "/"))-1] + "-" + oldTag
+
+	if environment == "prod" {
+		err,res := createNewBranch(projectID, transID, oldBranchName, branchName)
 		if err != nil {
-			logger.Errorf("[%s] Creating a new parent path [%s]...FAILED: %v", transID, parentPath, err)
-			return "error"
+			logger.Errorf("[%s] Creating a new branch named [%s]...%s: %v", transID, branchName, res.Status, err)
+			return "FAILED"
+		}
+		logger.Infof("[%s] Creating a new branch named [%s]...%s", transID, branchName, res.Status)
+	}
+
+	for blob := 0; blob < len(blobList); blob++ {
+		// Check directory existing
+		parentPath := strings.Join(strings.Split(blobList[blob], "/")[0:len(strings.Split(blobList[blob],"/"))-1], "/")
+		if _, err := os.Stat(parentPath); os.IsNotExist(err) {
+			err := os.MkdirAll(parentPath, os.ModePerm)
+			if err != nil {
+				logger.Errorf("[%s] Creating a new parent path [%s]...FAILED: %v", transID, parentPath, err)
+				return "FAILED"
+			}
+
+			logger.Debugf("[%s] Creating a new parent path [%s]...OK", transID, parentPath)
 		}
 
-		logger.Debugf("[%s] Creating a new parent path [%s]...OK", transID, parentPath)
-	}
+		// Download raw blob files
+		logger.Infof("[%s] Downloading raw blob file containing old tag [%s]", transID, oldTag)
+		blobRawContent, res, err := client.RepositoryFiles.GetRawFile(projectID, blobList[blob], &gitlab.GetRawFileOptions{Ref: gitlab.String("master")})
+		if err != nil {
+			logger.Errorf("[%s] Downloading raw blob content to local...FAILED: %v", transID, res.Status, err)
+			return "FAILED"
+		}
+		logger.Debugf("[%s] Downloading raw blob content to local...OK", transID, parentPath)
 
-	// Download raw blob files
-	logger.Infof("[%s] Downloading raw blob file containing old tag [%s]", transID, oldTag)
-	blobRawContent, res, err := client.RepositoryFiles.GetRawFile(projectID, blob, &gitlab.GetRawFileOptions{Ref: gitlab.String("master")})
-	if err != nil {
-		logger.Errorf("[%s] Downloading raw blob content to local...FAILED: %v", transID, res.Status, err)
-		return "error"
-	}
-	logger.Debugf("[%s] Downloading raw blob content to local...OK", transID, parentPath)
+		writErr := os.WriteFile(rootPath + "/" + blobList[blob] + ".tmp", blobRawContent, 0644)
+		if writErr != nil {
+			logger.Errorf("[%s] Writing raw blob content to temporary file...%s: %v", transID, res.Status, writErr)
+			return "FAILED"
+		}
+		logger.Debugf("[%s] Writing raw blob content to temporary file...%s", transID, parentPath)
 
-	writErr := os.WriteFile(rootPath + "/" + blob + ".tmp", blobRawContent, 0644)
-	if writErr != nil {
-		logger.Errorf("[%s] Writing raw blob content to temporary file...%s: %v", transID, res.Status, writErr)
-		return "error"
-	}
-	logger.Debugf("[%s] Writing raw blob content to temporary file...%s", transID, parentPath)
+		// Replace old tag with new tag
+		replaceState := utils.ReplaceImageTag(transID, rootPath + "/" + blobList[blob], oldTag, newTag)
+		if replaceState {
+			logger.Debugf("[%s] Replacing old tag [%s] with new tag [%s]...OK", transID, oldTag, newTag)
+		}
 
-	// Replace old tag with new tag
-	replaceState := utils.ReplaceImageTag(transID, rootPath + "/" + blob, oldTag, newTag)
-	if replaceState {
-		logger.Debugf("[%s] Replacing old tag [%s] with new tag [%s]...OK", transID, oldTag, newTag)
+		if environment == "prod" {
+			status := commitChange(projectID, transID, imageName, branchName, oldTag, newTag, blobList, blob, rootPath + "/" + blobList[blob])
+			saveState(transID, fullImage, cluster, blobList[blob], status)
+		} else {
+			status := commitChange(projectID, transID, imageName, "master", oldTag, newTag, blobList, blob, rootPath + "/" + blobList[blob])
+			saveState(transID, fullImage, cluster, blobList[blob], status)
+		}
 	}
 
 	// Commit a new change
 	if environment == "prod" {
-		branchName := strings.Split(imageName, "/")[len(strings.Split(imageName, "/"))-1] + "-" + newTag
-		oldBranchName := strings.Split(imageName, "/")[len(strings.Split(imageName, "/"))-1] + "-" + oldTag
-
-		branchIsExists := listBranch(projectID, oldBranchName, transID)
-		if branchIsExists {
-			deleteOldBranch(projectID, oldBranchName, transID)
-		}
-
-		if createNewBranch(projectID, transID, branchName) && commitChange(projectID, transID, imageName, branchName, oldTag, newTag, blob, rootPath + "/" + blob) {
-			return "success"
-		}
-	} else {
-		if commitChange(projectID, transID, imageName, "master", oldTag, newTag, blob, rootPath + "/" + blob) {
-			return "success"
-		}
+		created := createMergeRequest(projectID, transID, imageName, branchName, newTag)
+		if created { return "SUCCESSFUL" }
 	}
 
-	return "error"
+	return "SUCCESSFUL"
 }
 
-func commitChange(projectID interface{}, transID string, imageName string, branchName string, oldTag string, newTag string, blob string, filePath string) bool {
+func commitChange(projectID interface{}, transID string, imageName string, branchName string, oldTag string, newTag string, blobList []string, blob int, filePath string) string {
 	logger := utils.ConfigZap()
 	client := createNewGitlabClient()
-	content, err := os.ReadFile(blob)
+	content, err := os.ReadFile(blobList[blob])
 	if err != nil {
 		logger.Errorf("[%s] Reading temporary file %s...FAILED: %v", transID, blob, err)
-		return false
 	}
 
 	_, res, err := client.Commits.CreateCommit(projectID, &gitlab.CreateCommitOptions{
@@ -85,16 +94,22 @@ func commitChange(projectID interface{}, transID string, imageName string, branc
 		Actions: []*gitlab.CommitActionOptions{
 			{
 				Action: gitlab.FileAction(gitlab.FileUpdate),
-				FilePath: gitlab.String(blob),
+				FilePath: gitlab.String(blobList[blob]),
 				Content: gitlab.String(string(content)),
 			},
 		},
 	})
 	if err != nil {
-		logger.Errorf("[%s] Committing new change to branch [%s]...%s: %v", transID, branchName, res.Status, err)
-		return false
+		logger.Errorf("[%s][%d] Committing new change to branch [%s]...%s: %v", transID, blob, branchName, res.Status, err)
+		return "FAILED"
 	}
-	logger.Infof("[%s] Committing new change to branch [%s]...%s", transID, branchName, res.Status)
+	logger.Infof("[%s][%d] Committing new change to branch [%s]...%s", transID, blob, branchName, res.Status)
+	return "SUCCESSFUL"
+}
+
+func createMergeRequest(projectID interface{}, transID string, imageName string, branchName string, newTag string) bool {
+	logger := utils.ConfigZap()
+	client := createNewGitlabClient()
 
 	if branchName != "master" {
 		_, res, err := client.MergeRequests.CreateMergeRequest(projectID,&gitlab.CreateMergeRequestOptions{
@@ -111,7 +126,7 @@ func commitChange(projectID interface{}, transID string, imageName string, branc
 		return true
 	}
 
-	return true
+	return false
 }
 
 func listBranch(projectID interface{}, oldBranchName string, transID string) bool {
@@ -133,25 +148,24 @@ func listBranch(projectID interface{}, oldBranchName string, transID string) boo
 	return true
 }
 
-func createNewBranch(projectID interface{}, transID string, branchName string) bool {
-	logger := utils.ConfigZap()
+func createNewBranch(projectID interface{}, transID string, oldBranchName string, branchName string) (error,*gitlab.Response) {
 	client := createNewGitlabClient()
+
+	branchIsExists := listBranch(projectID, oldBranchName, transID)
+	if branchIsExists {
+		deleteOldBranch(projectID, oldBranchName, transID)
+	}
 
 	_, res, err := client.Branches.CreateBranch(projectID,
 		&gitlab.CreateBranchOptions{
 			Branch: gitlab.String(branchName),
 			Ref: gitlab.String("master"),
 		})
-	if err != nil {
-		logger.Errorf("[%s] Creating a new branch named [%s]...%s: %v", transID, branchName, res.Status, err)
-	} else {
-		logger.Debugf("[%s] Creating a new branch named [%s]...%s", transID, branchName, res.Status)
-	}
 
 	if res.StatusCode == 201 {
-		return true
+		return nil,res
 	}
-	return false
+	return err,res
 }
 
 func deleteOldBranch(projectID interface{}, branchName string, transID string) bool {
