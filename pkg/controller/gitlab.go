@@ -263,6 +263,29 @@ func getUserID(projectID interface{}, transID string) int {
 	return user.ID
 }
 
+func dedup(projectID interface{}, imageName string, blobList []string) []string {
+	var dedupedBlobs []string
+	client := createNewGitlabClient()
+	re := regexp.MustCompile(`(?:repository?:)\s+([a-z-]+.)+[a-z]+(\/[a-zA-Z0-9-_]+)+`)
+
+	for i := 0; i < len(blobList); i++ {
+		raw, _, _ := client.RepositoryFiles.GetRawFile(
+			projectID,
+			blobList[i],
+			&gitlab.GetRawFileOptions{
+				Ref: gitlab.String("master"),
+			})
+		regexRepo := strings.ReplaceAll(re.FindString(string(raw)), "repository:", "")
+		trimedRegexRepo := strings.TrimSpace(regexRepo)
+
+		if trimedRegexRepo == imageName {
+			dedupedBlobs = append(dedupedBlobs, blobList[i])
+		}
+	}
+
+	return dedupedBlobs
+}
+
 func locateBlob(projectID interface{}, transID string, imageName string) []string {
 	var blobList []string
 	logger := utils.ConfigZap()
@@ -289,5 +312,7 @@ func locateBlob(projectID interface{}, transID string, imageName string) []strin
 		blobList = append(blobList, blobName)
 	}
 
-	return blobList
+	dedupedBlobs := dedup(projectID, imageName, blobList)
+
+	return dedupedBlobs
 }
