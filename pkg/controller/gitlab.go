@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"vngitSub/pkg/utils"
 
@@ -14,6 +15,8 @@ import (
 func changeTagImage(projectID interface{}, transID string, environment string, imageName string, oldTag string, newTag string, blobList []string, botName string, rootPath string, fullImage string, cluster string) string {
 	logger := utils.ConfigZap()
 	client := createNewGitlabClient()
+	location,_ := time.LoadLocation("Asia/Ho_Chi_Minh")
+	now := time.Now().In(location).Format(time.RFC3339)
 
 	branchName := strings.Split(imageName, "/")[len(strings.Split(imageName, "/"))-1] + "-" + newTag
 	oldBranchName := strings.Split(imageName, "/")[len(strings.Split(imageName, "/"))-1] + "-" + oldTag
@@ -64,10 +67,10 @@ func changeTagImage(projectID interface{}, transID string, environment string, i
 
 		if environment == "prod" {
 			status := commitChange(projectID, transID, imageName, branchName, oldTag, newTag, blobList, blob, rootPath + "/" + blobList[blob])
-			saveState(transID, fullImage, cluster, blobList[blob], status)
+			saveState(transID, imageName, oldTag, newTag, cluster, blobList[blob], now, status)
 		} else {
 			status := commitChange(projectID, transID, imageName, "master", oldTag, newTag, blobList, blob, rootPath + "/" + blobList[blob])
-			saveState(transID, fullImage, cluster, blobList[blob], status)
+			saveState(transID, imageName, oldTag, newTag, cluster, blobList[blob], now, status)
 		}
 	}
 

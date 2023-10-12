@@ -56,12 +56,12 @@ func ValidateMongoConnection() {
 	}
 }
 
-func saveState(transID string, image string, cluster string, blobName string, status string) {
+func saveState(transID string, image string, oldTag string, newTag string, cluster string, blobName string, time string, status string) {
 	logger := utils.ConfigZap()
 	client, mongoDBName := connectMongo()
 
 	coll := client.Database(mongoDBName).Collection("status")
-	newStatus := model.MessageStatus{Image: image, Cluster: cluster, BlobName: blobName, Status: status}
+	newStatus := model.MessageStatus{Image: image, OldTag: oldTag, NewTag: newTag, Cluster: cluster, BlobName: blobName, Time: time, Status: status}
 
 	result, err := coll.InsertOne(context.TODO(), newStatus)
 	if err != nil {
