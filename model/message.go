@@ -13,4 +13,5 @@ type MessageStatus struct {
 	BlobName 	string	`bson:"blob,omitempty"`
 	Time 		string	`bson:"time,omitempty"`
 	Status		string	`bson:"status,omitempty"`
+	Metadata	string	`bson:"metadata,omitempty"`
 }

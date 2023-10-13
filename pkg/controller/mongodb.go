@@ -61,7 +61,7 @@ func saveState(transID string, image string, oldTag string, newTag string, clust
 	client, mongoDBName := connectMongo()
 
 	coll := client.Database(mongoDBName).Collection("status")
-	newStatus := model.MessageStatus{Image: image, OldTag: oldTag, NewTag: newTag, Cluster: cluster, BlobName: blobName, Time: time, Status: status}
+	newStatus := model.MessageStatus{Image: image, OldTag: oldTag, NewTag: newTag, Cluster: cluster, BlobName: blobName, Time: time, Status: status, Metadata: "Sent from PubSub version"}
 
 	result, err := coll.InsertOne(context.TODO(), newStatus)
 	if err != nil {
