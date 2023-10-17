@@ -1,6 +1,7 @@
 FROM golang:1.18-alpine AS builder
 WORKDIR /app
 COPY . ./
+RUN apk --no-cache add tzdata
 RUN go mod download
 COPY *.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/vngitSub

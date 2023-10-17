@@ -15,7 +15,7 @@ import (
 func changeTagImage(projectID interface{}, transID string, environment string, imageName string, oldTag string, newTag string, blobList []string, botName string, rootPath string, fullImage string, cluster string) string {
 	logger := utils.ConfigZap()
 	client := createNewGitlabClient()
-	location,_ := time.LoadLocation("Asia/Bangkok")
+	location,_ := time.LoadLocation("Asia/Ho_Chi_Minh")
 	now := time.Now().In(location).Format(time.RFC3339)
 
 	branchName := strings.Split(imageName, "/")[len(strings.Split(imageName, "/"))-1] + "-" + newTag
