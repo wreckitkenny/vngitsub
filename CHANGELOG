@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.8] | 2023-10-17
+### Added/Removed
+### Changed
+- Changed timezone location to Asia/Bangkok
+### Fixed
+
 ## [1.0.7] | 2023-10-12
 ### Added/Removed
 - Added more fields to save to database
