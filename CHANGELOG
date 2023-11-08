@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.10] | 2023-11-08
+### Added/Removed
+### Changed
+### Fixed
+- Fixed error MongoDB not closing connection
+
 ## [1.0.9] | 2023-10-17
 ### Added/Removed
 ### Changed
