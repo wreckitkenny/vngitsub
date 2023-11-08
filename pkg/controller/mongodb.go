@@ -42,9 +42,18 @@ func connectMongo() (*mongo.Client, string, ) {
 	return client, mongoDBName
 }
 
+func deferMongo(client *mongo.Client) {
+	logger := utils.ConfigZap()
+	if err := client.Disconnect(context.TODO()); err != nil {
+		logger.Panicf("Closing MongoDB connection...FAILED: %s", err)
+	}
+}
+
+// ValidateMongoConnection makes sure that the connection to Mongo works
 func ValidateMongoConnection() {
 	logger := utils.ConfigZap()
 	client, mongoDBName := connectMongo()
+	defer deferMongo(client)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	// Check connection to MongoDB
@@ -59,6 +68,7 @@ func ValidateMongoConnection() {
 func saveState(transID string, image string, oldTag string, newTag string, cluster string, blobName string, time string, status string) {
 	logger := utils.ConfigZap()
 	client, mongoDBName := connectMongo()
+	defer deferMongo(client)
 
 	coll := client.Database(mongoDBName).Collection("status")
 	newStatus := model.MessageStatus{Image: image, OldTag: oldTag, NewTag: newTag, Cluster: cluster, BlobName: blobName, Time: time, Status: status, Metadata: "Sent from PubSub version"}
